@@ -25,4 +25,12 @@ public class Role {
     @JsonIgnore
     @OneToMany(mappedBy = "role", fetch = FetchType.EAGER)
     private List<GrantedPermission> permissions;
+
+    @Override
+    public String toString() {
+        return "Role{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                '}';
+    }
 }

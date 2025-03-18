@@ -7,7 +7,6 @@ import com.nimbusds.jose.jwk.source.JWKSource;
 import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
-import org.springframework.http.MediaType;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -17,7 +16,6 @@ import org.springframework.security.oauth2.server.authorization.config.annotatio
 import org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
-import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
 import org.springframework.stereotype.Component;
 
 import java.security.KeyPair;
@@ -33,28 +31,19 @@ public class AuthorizationSecurityConfig {
     @Bean
     @Order(1)
     public SecurityFilterChain authorizationServerSecurityFilterChain(HttpSecurity http) throws Exception {
-        OAuth2AuthorizationServerConfigurer authorizationServerConfigurer =
-                OAuth2AuthorizationServerConfigurer.authorizationServer();
-        http
-                .securityMatcher(authorizationServerConfigurer.getEndpointsMatcher())
-                .with(authorizationServerConfigurer, authorizationServer ->
-                        authorizationServer
-                                .oidc(Customizer.withDefaults())    // Enable OpenID Connect 1.0
-                )
-                .authorizeHttpRequests(authorize ->
-                        authorize
-                                .anyRequest().authenticated()
-                )
-                .exceptionHandling(exceptions -> exceptions
-                        .defaultAuthenticationEntryPointFor(
-                                new LoginUrlAuthenticationEntryPoint("/login"),
-                                new MediaTypeRequestMatcher(MediaType.TEXT_HTML)
-                        )
-                ).oauth2ResourceServer(
-                        oauthResourceServerConfig ->
-                                oauthResourceServerConfig.jwt(Customizer.withDefaults())
-                )
-        ;
+
+        OAuth2AuthorizationServerConfiguration.applyDefaultSecurity(http);
+
+        http.getConfigurer(OAuth2AuthorizationServerConfigurer.class)
+                .oidc(Customizer.withDefaults());
+
+        http.exceptionHandling(exceptionConfig -> {
+            exceptionConfig.authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login"));
+        });
+
+        http.oauth2ResourceServer(oauthResourceServerConfig -> {
+            oauthResourceServerConfig.jwt(Customizer.withDefaults());
+        });
 
         return http.build();
     }
@@ -62,15 +51,12 @@ public class AuthorizationSecurityConfig {
     @Bean
     @Order(2)
     public SecurityFilterChain webSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-                .authorizeHttpRequests(authorize -> {
-                            authorize.requestMatchers("/login").permitAll();
-                            authorize.anyRequest().authenticated();
-                        }
-                )
-                // Form login handles the redirect to the login page from the
-                // authorization server filter chain
-                .formLogin(Customizer.withDefaults());
+
+        http.authorizeHttpRequests(authConfig -> {
+            authConfig.requestMatchers("/login").permitAll();
+            authConfig.anyRequest().authenticated();
+        });
+        http.formLogin(formLoginConfig -> formLoginConfig.loginPage("/login").permitAll());
 
         return http.build();
     }
@@ -96,7 +82,7 @@ public class AuthorizationSecurityConfig {
     @Bean
     public AuthorizationServerSettings authorizationServerSettings() {
         return AuthorizationServerSettings.builder()
-                .issuer("http://localhost:9595")
+                .issuer("http://localhost:9595/authorization-server")
                 .build();
     }
 
@@ -106,8 +92,7 @@ public class AuthorizationSecurityConfig {
             KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance("RSA");
             keyPairGenerator.initialize(2048);
             keyPair = keyPairGenerator.generateKeyPair();
-        }
-        catch (Exception ex) {
+        } catch (Exception ex) {
             throw new IllegalStateException(ex);
         }
         return keyPair;

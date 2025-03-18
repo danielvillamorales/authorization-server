@@ -4,10 +4,12 @@ import com.cursos.api.authorization_server.exception.NotFoundException;
 import com.cursos.api.authorization_server.mapper.ClientAppMapper;
 import com.cursos.api.authorization_server.persistence.repository.ClientAppRepository;
 import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @AllArgsConstructor
 @Service
 public class RegisteredClientService implements RegisteredClientRepository {
@@ -50,6 +52,8 @@ public class RegisteredClientService implements RegisteredClientRepository {
      */
     @Override
     public RegisteredClient findByClientId(String clientId) {
-        return null;
+        return findById(clientId);
     }
+
+
 }
